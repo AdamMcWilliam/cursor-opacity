@@ -1,0 +1,101 @@
+{
+  "name": "cursor-opacity",
+  "displayName": "Cursor Opacity",
+  "description": "Fade Cursor IDE and Agents backgrounds on Windows, macOS, and Linux. Text and controls stay solid. Saves and loads on launch.",
+  "version": "0.4.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "opacity",
+    "transparency",
+    "cursor",
+    "window"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorOpacity.focus",
+        "title": "Focus Controls",
+        "category": "Cursor Opacity"
+      },
+      {
+        "command": "cursorOpacity.reset",
+        "title": "Reset to 100%",
+        "category": "Cursor Opacity"
+      },
+      {
+        "command": "cursorOpacity.setIde",
+        "title": "Set IDE Opacity",
+        "category": "Cursor Opacity"
+      },
+      {
+        "command": "cursorOpacity.setAgent",
+        "title": "Set Agent Opacity",
+        "category": "Cursor Opacity"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cursorOpacity",
+          "title": "Opacity",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cursorOpacity": [
+        {
+          "type": "webview",
+          "id": "cursorOpacity.panel",
+          "name": "Window Opacity"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Cursor Opacity",
+      "properties": {
+        "cursorOpacity.ide": {
+          "type": "number",
+          "default": 100,
+          "minimum": 15,
+          "maximum": 100,
+          "scope": "application",
+          "description": "Background opacity of Cursor IDE windows, as a percent. 100 is fully opaque. Text and controls stay solid. Applied on launch."
+        },
+        "cursorOpacity.agent": {
+          "type": "number",
+          "default": 100,
+          "minimum": 15,
+          "maximum": 100,
+          "scope": "application",
+          "description": "Background opacity of the Cursor Agents window, as a percent. 100 is fully opaque. Text and controls stay solid. Applied on launch."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "^5.8.0"
+  }
+}
