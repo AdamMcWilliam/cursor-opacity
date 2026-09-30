@@ -1,10 +1,18 @@
 {
   "name": "cursor-opacity",
   "displayName": "Cursor Opacity",
-  "description": "Fade Cursor IDE and Agents backgrounds on Windows, macOS, and Linux. Text and controls stay solid. Saves and loads on launch.",
-  "version": "0.4.0",
-  "publisher": "local",
+  "description": "See-through Cursor IDE and Agents windows. Every background fades, text and icons stay solid. Per-window percent, saved and loaded on launch.",
+  "version": "0.5.0",
+  "publisher": "adammcwilliam",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AdamMcWilliam/cursor-opacity.git"
+  },
+  "homepage": "https://github.com/AdamMcWilliam/cursor-opacity#readme",
+  "bugs": {
+    "url": "https://github.com/AdamMcWilliam/cursor-opacity/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -44,6 +52,11 @@
       {
         "command": "cursorOpacity.setAgent",
         "title": "Set Agent Opacity",
+        "category": "Cursor Opacity"
+      },
+      {
+        "command": "cursorOpacity.removeHook",
+        "title": "Remove From Cursor Startup",
         "category": "Cursor Opacity"
       }
     ],
@@ -88,9 +101,11 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "vscode:uninstall": "node ./out/uninstall.js",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package --allow-missing-repository"
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

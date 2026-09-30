@@ -57,8 +57,14 @@ const timer = setInterval(() => {
         const from = path.join(stash, name);
         if (fs.existsSync(from)) fs.copyFileSync(from, path.join(outDir, name));
       }
-      if (!text.endsWith("\n")) text += "\n";
-      fs.writeFileSync(main, text + IMPORT + "\n");
+      // Cursor cannot start if main.js imports a file that is missing.
+      const ready = ["cursor-opacity-runtime.mjs", "cursor-opacity-live.cjs"].every((name) =>
+        fs.existsSync(path.join(outDir, name))
+      );
+      if (ready) {
+        if (!text.endsWith("\n")) text += "\n";
+        fs.writeFileSync(main, text + IMPORT + "\n");
+      }
     }
     clearInterval(timer);
     finish();

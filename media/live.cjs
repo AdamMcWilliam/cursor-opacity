@@ -373,11 +373,14 @@ function spawnGuard(stash) {
   child.unref();
 }
 
-function start() {
+function start(source = "attached") {
   globalThis.__cursorOpacityLive?.stop();
+  const startedAt = new Date().toISOString();
 
   // Survives re-injection, because after the first fade getBackgroundColor no longer reports the theme color.
   const original = (globalThis.__cursorOpacityOriginal ??= new Map());
+  const material = (globalThis.__cursorOpacityMaterial ??= new Map());
+  const want = (globalThis.__cursorOpacityWant ??= new Map());
   const applied = new Map();
   const stateFile = path.join(userDir(), "cursor-opacity.json");
   let levels = readLevels();
@@ -387,12 +390,41 @@ function start() {
     return win.getTitle() === AGENT_TITLE ? levels.agent : levels.ide;
   }
 
-  function setNative(win, percent) {
+  // Cursor sets each window's background color and material again when its theme loads or changes,
+  // which would cover the fade with a solid color. Intercept those calls on the window itself: remember
+  // what Cursor asked for, and keep the window clear while it is faded.
+  function guardNative(win) {
+    if (win.__cursorOpacityGuarded) return;
+    win.__cursorOpacityGuarded = true;
+    const proto = Object.getPrototypeOf(win);
     if (!original.has(win.id)) original.set(win.id, win.getBackgroundColor());
+    win.setBackgroundColor = function (color) {
+      globalThis.__cursorOpacityOriginal.set(win.id, color);
+      const faded = (globalThis.__cursorOpacityWant.get(win.id) ?? 100) < 100;
+      return proto.setBackgroundColor.call(win, faded ? "#00000000" : color);
+    };
+    for (const name of ["setBackgroundMaterial", "setVibrancy"]) {
+      if (typeof proto[name] !== "function") continue;
+      win[name] = function (value) {
+        globalThis.__cursorOpacityMaterial.set(win.id + ":" + name, value);
+        const faded = (globalThis.__cursorOpacityWant.get(win.id) ?? 100) < 100;
+        return proto[name].call(win, faded ? (name === "setVibrancy" ? null : "none") : value);
+      };
+    }
+  }
+
+  function setNative(win, percent) {
+    guardNative(win);
+    want.set(win.id, percent);
+    const proto = Object.getPrototypeOf(win);
+    const faded = percent < 100;
     // No backdrop material: acrylic and vibrancy blur the desktop, and acrylic turns solid when unfocused.
-    if (process.platform === "win32") win.setBackgroundMaterial("none");
-    else if (process.platform === "darwin") win.setVibrancy(null);
-    win.setBackgroundColor(percent < 100 ? "#00000000" : original.get(win.id) || "#000000");
+    if (process.platform === "win32") {
+      proto.setBackgroundMaterial.call(win, faded ? "none" : material.get(win.id + ":setBackgroundMaterial") ?? "none");
+    } else if (process.platform === "darwin") {
+      proto.setVibrancy.call(win, faded ? null : material.get(win.id + ":setVibrancy") ?? null);
+    }
+    proto.setBackgroundColor.call(win, faded ? "#00000000" : original.get(win.id) || "#000000");
   }
 
   function applyWindow(win, force) {
@@ -417,6 +449,8 @@ function start() {
     const body = {
       running: true,
       live: true,
+      source,
+      startedAt,
       ide: levels.ide,
       agent: levels.agent,
       ideWindows: titles.filter((t) => t !== AGENT_TITLE),
@@ -491,6 +525,9 @@ function start() {
       listeners.delete(win.id);
       applied.delete(win.id);
       original.delete(win.id);
+      want.delete(win.id);
+      material.delete(win.id + ":setBackgroundMaterial");
+      material.delete(win.id + ":setVibrancy");
     });
   }
 

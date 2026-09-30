@@ -35,6 +35,9 @@ while ((Get-Date) -lt $deadline) {
                 $from = Join-Path $Stash $name
                 if (Test-Path $from) { Copy-Item -Force $from (Join-Path $OutDir $name) }
             }
+            # Cursor cannot start if main.js imports a file that is missing.
+            if (-not (Test-Path (Join-Path $OutDir "cursor-opacity-runtime.mjs"))) { break }
+            if (-not (Test-Path (Join-Path $OutDir "cursor-opacity-live.cjs"))) { break }
             if (-not $text.EndsWith("`n")) { $text += "`n" }
             $text += "$import`n"
             [System.IO.File]::WriteAllText($main, $text, (New-Object System.Text.UTF8Encoding($false)))

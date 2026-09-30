@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { readOpacityStatus, type ApplyResult, type Levels } from "./host";
 import { injectLiveRuntime } from "./inject";
-import { clearWholeWindowFade, ensureInstalled, readOpacityState, writeOpacityState } from "./install";
+import { ensureInstalled, readOpacityState, uninstallHook, writeOpacityState } from "./install";
 import { OpacityViewProvider } from "./view";
 
 const MIN = 15;
@@ -23,9 +23,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   writeOpacityState(levels);
   const configured = readLevels();
   if (configured.ide !== levels.ide || configured.agent !== levels.agent) void persistLevels();
-  clearWholeWindowFade();
 
-  const { runtimeFile } = await ensureInstalled(context.extensionPath, output);
+  const { runtimeFile, hooked } = ensureInstalled(context.extensionPath, output);
   let liveError = "";
   try {
     output.appendLine(`Live hook: ${await injectLiveRuntime(runtimeFile)}`);
@@ -61,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("cursorOpacity.reset", () => setLevels({ ide: 100, agent: 100 })),
     vscode.commands.registerCommand("cursorOpacity.setIde", () => promptFor("ide")),
     vscode.commands.registerCommand("cursorOpacity.setAgent", () => promptFor("agent")),
+    vscode.commands.registerCommand("cursorOpacity.removeHook", removeStartupHook),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (persistDepth > 0 || !event.affectsConfiguration("cursorOpacity")) return;
       const next = readLevels();
@@ -76,10 +76,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     } }
   );
 
-  statusText = liveError
-    ? "Could not attach live. Quit Cursor and open it again to fade backgrounds."
-    : "Backgrounds update live. Text and controls stay solid.";
+  statusText = !liveError
+    ? "Backgrounds update live. Text and controls stay solid."
+    : hooked
+      ? "Could not attach live. Quit Cursor and open it again to fade backgrounds."
+      : "Could not attach to Cursor. See Output > Cursor Opacity.";
   refresh();
+}
+
+async function removeStartupHook(): Promise<void> {
+  const choice = await vscode.window.showWarningMessage(
+    "Remove Cursor Opacity from Cursor's startup? Windows go back to solid now, and the fade stops loading on launch.",
+    { modal: true },
+    "Remove"
+  );
+  if (choice !== "Remove") return;
+  await setLevels({ ide: 100, agent: 100 });
+  const error = uninstallHook();
+  if (error) {
+    void vscode.window.showErrorMessage(`Could not remove the startup hook: ${error}`);
+    return;
+  }
+  void vscode.window.showInformationMessage(
+    "Removed. You can uninstall the extension now. Opening the IDE with it installed adds the hook back."
+  );
 }
 
 export async function deactivate(): Promise<void> {
